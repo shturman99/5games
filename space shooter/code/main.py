@@ -12,7 +12,8 @@ class Star(pygame.sprite.Sprite):
 class Meteor(pygame.sprite.Sprite):
     def __init__(self,surf,pos, *gorups):
         super().__init__(*gorups)
-        self.image = surf
+        self.image_original = surf
+        self.image = self.image_original
         self.rect = self.image.get_frect(center = (pos))
         self.speed = rd.randint(100, 200)
         self.direction = pygame.math.Vector2(rd.uniform(-0.5,0.5), 1)
@@ -20,14 +21,23 @@ class Meteor(pygame.sprite.Sprite):
         # cooldown setup
         self.time = pygame.time.get_ticks()
         self.cooldown = 5000
+        # rotation
+        self.roation_speed = rd.uniform(-40,40)
+        self.rotation = 0
+        
     def update(self, dt):
         self.rect.center += self.direction * self.speed * dt
         if self.rect.top > H:
             self.rect.center = (rd.randint(0, W), rd.randint(-200, 0))
             self.speed = rd.randint(100, 200)
+
+        self.rotation += self.roation_speed * dt
+        self.image = pygame.transform.rotozoom(self.image_original,self.rotation,1)
+        self.rect = self.image.get_frect(center = self.rect.center)
+
         # cooldown
-        if pygame.time.get_ticks() - self.time > self.cooldown:
-            self.kill()
+        if self.rect.top > H +100:
+            self.kill()  
 
 class Player(pygame.sprite.Sprite):
     def __init__(self, *groups):
@@ -40,6 +50,10 @@ class Player(pygame.sprite.Sprite):
         self.can_shoot = True
         self.shot_time = 0
         self.cooldown = 400
+        # mask
+        mask = pygame.mask.from_surface(self.image)
+        mask_surf = mask.to_surface()
+        mask_surf.set_colorkey("#000000")
 
     def laser_cooldown(self):
         if not self.can_shoot:
@@ -80,11 +94,20 @@ def collision_check():
     for laser in laser_sprite:
         if pygame.sprite.spritecollide(laser , meteor_sprite, True):
             laser.kill()
-    player_collide = pygame.sprite.spritecollide(player, meteor_sprite, True)
+    player_collide = pygame.sprite.spritecollide(player, meteor_sprite, True,pygame.sprite.collide_mask)
     if player_collide:
         player.kill()
         return False
     return True
+
+def display_score():
+    current_time = pygame.time.get_ticks()
+    score = current_time // 10
+    score_surf = font.render(str(score), True, "#fafaf0")
+    score_pos = (W//2 ,H  - score_surf.get_height()-10)
+    score_rect = score_surf.get_rect(midbottom= score_pos)
+    pygame.draw.rect(display_surface,"#fafaf0",score_rect.inflate(20,20).move(0,-5),5,5)
+    display_surface.blit(score_surf, score_rect)
 
 # pygame setup
 pygame.init()
@@ -94,13 +117,18 @@ pygame.display.set_caption("Space Shooter")
 
 clock = pygame.time.Clock()
 
+
+# image setup
+laser_surf = pygame.image.load(join("space shooter", "images", "laser.png")).convert_alpha()
+star_surf = pygame.image.load(join("space shooter", "images", "star.png")).convert_alpha()
+meteor_surf = pygame.image.load(join("space shooter", "images", "meteor.png")).convert_alpha()
+font = pygame.font.Font(join("space shooter", "images", "Oxanium-Bold.ttf"), 30)
+text_surf = font.render("Game Over", True, "#fafaf0")
+
 # sprite setup
 all_sprites = pygame.sprite.Group()
 meteor_sprite = pygame.sprite.Group()
 laser_sprite = pygame.sprite.Group()
-laser_surf = pygame.image.load(join("space shooter", "images", "laser.png")).convert_alpha()
-star_surf = pygame.image.load(join("space shooter", "images", "star.png")).convert_alpha()
-meteor_surf = pygame.image.load(join("space shooter", "images", "meteor.png")).convert_alpha()
 for _ in range(20):
     Star(star_surf, all_sprites)
 player = Player(all_sprites)
@@ -108,7 +136,7 @@ running = True
 
 # custom event setup
 meteror_event = pygame.event.custom_type()
-pygame.time.set_timer(meteror_event, 200) 
+pygame.time.set_timer(meteror_event, 600) 
 
 while running:
     dt = clock.tick(60)/1000
@@ -126,10 +154,10 @@ while running:
     if not collision_check():
         running = False
     # drawing code
-    display_surface.fill(("darkgray"))
+    display_surface.fill(("#3a2e3f"))
     all_sprites.draw(display_surface)
     all_sprites.update(dt)
-    # update the display
+    display_score()
     pygame.display.update()
 
 pygame.quit()
