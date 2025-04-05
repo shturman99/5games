@@ -2,6 +2,20 @@ import pygame
 from os.path import join
 import random as rd
 # genreal setup
+class AnimatedExplosion(pygame.sprite.Sprite):
+    def __init__(self,frames,pos, *groups):
+        super().__init__(*groups)
+        self.frames = frames
+        self.fram_index = 0
+        self.image = frames[self.fram_index]
+        self.rect = self.image.get_frect(center = pos)
+
+    def update(self, dt):
+        self.fram_index += 20 * dt
+        if self.fram_index <= len(self.frames):
+            self.image = self.frames[int(self.fram_index)]
+        else:
+            self.kill()
 
 class Star(pygame.sprite.Sprite):
     def __init__(self, surf,*groups):
@@ -72,6 +86,7 @@ class Player(pygame.sprite.Sprite):
         if recent_key[pygame.K_SPACE] and self.can_shoot:
             if self.can_shoot:
                 laser = Laser(laser_surf, self.rect.center, (all_sprites, laser_sprite))
+                laser_sound.play()
                 laser.rect.center = self.rect.midtop
                 self.can_shoot = False
                 self.shot_time = pygame.time.get_ticks()
@@ -90,14 +105,18 @@ class Laser(pygame.sprite.Sprite):
         if self.rect.bottom < 0:
             self.kill()
 
+
+       
 def collision_check():
     for laser in laser_sprite:
         if pygame.sprite.spritecollide(laser , meteor_sprite, True):
             laser.kill()
+            explosion_sound.play()
+            animation = AnimatedExplosion(frams,laser.rect.midtop,all_sprites)
     player_collide = pygame.sprite.spritecollide(player, meteor_sprite, True,pygame.sprite.collide_mask)
     if player_collide:
-        player.kill()
-        return False
+        damage_sound.play()
+        return True
     return True
 
 def display_score():
@@ -122,6 +141,7 @@ clock = pygame.time.Clock()
 laser_surf = pygame.image.load(join("space shooter", "images", "laser.png")).convert_alpha()
 star_surf = pygame.image.load(join("space shooter", "images", "star.png")).convert_alpha()
 meteor_surf = pygame.image.load(join("space shooter", "images", "meteor.png")).convert_alpha()
+frams = [ pygame.image.load(join("space shooter","images","explosion",f"{i}.png")).convert_alpha() for i in range(21)]
 font = pygame.font.Font(join("space shooter", "images", "Oxanium-Bold.ttf"), 30)
 text_surf = font.render("Game Over", True, "#fafaf0")
 
@@ -133,6 +153,15 @@ for _ in range(20):
     Star(star_surf, all_sprites)
 player = Player(all_sprites)
 running = True
+
+# sound setup 
+laser_sound = pygame.mixer.Sound(join("space shooter","audio","laser.wav"))
+game_sound= pygame.mixer.Sound(join("space shooter","audio","game_music.wav"))
+explosion_sound= pygame.mixer.Sound(join("space shooter","audio","explosion.wav"))
+damage_sound = pygame.mixer.Sound(join("space shooter","audio","damage.ogg"))
+laser_sound.set_volume(0.5)
+game_sound.set_volume(0.4)
+game_sound.play(-1)
 
 # custom event setup
 meteror_event = pygame.event.custom_type()
