@@ -1,7 +1,8 @@
 from settings import *
 from player import Player
 from sprites import *
-
+from pytmx.util_pygame import load_pygame
+from groups import *
 from random import randint
 
 class Game():
@@ -13,14 +14,27 @@ class Game():
         self.running = True
         self.clock = pygame.time.Clock()
         # Groups
-        self.all_sprites = pygame.sprite.Group()
+        self.all_sprites = AllSprites()
         self.collision_sprites = pygame.sprite.Group()
+        self.setup()
         # spriters
-        self.player = Player((100,100),self.collision_sprites,self.all_sprites) 
-        for _ in range(6):
-            x, y = randint(0,WINDOW_WIDTH), randint(0,WINDOW_HEIGHT)
-            w, h = randint(0,100), randint(0,100)
-            ColissionSprites((x,y),(w,h),(self.all_sprites,self.collision_sprites))
+    def setup(self):
+        map = load_pygame(join("Vampire survivor","data","maps","world.tmx"))
+        for x, y, image in map.get_layer_by_name("Ground").tiles():
+            Sprite((x * TILE_SIZE,y* TILE_SIZE),image,(self.all_sprites))
+
+        for obj in map.get_layer_by_name("Objects"):
+            CollisionSprite((obj.x,obj.y),obj.image,(self.all_sprites,self.collision_sprites))
+
+        for obj in map.get_layer_by_name("Collisions"):
+            invis_surf = pygame.Surface((obj.width,obj.height))
+            CollisionSprite((obj.x,obj.y),pygame.Surface((obj.width,obj.height)),self.collision_sprites)
+
+        for obj in map.get_layer_by_name("Entities"):
+            if obj.name == "Player":
+                self.player = Player((obj.x,obj.y),self.collision_sprites,self.all_sprites) 
+                self.gun = Gun(self.player,self.all_sprites)
+
     def run(self):
         while self.running:
             # dt
@@ -36,7 +50,7 @@ class Game():
             self.all_sprites.update(dt)
             # draw
             self.display.fill("#fafafa")
-            self.all_sprites.draw(self.display)
+            self.all_sprites.draw(self.player.rect.center)
             pygame.display.update()
         pygame.quit()
         
