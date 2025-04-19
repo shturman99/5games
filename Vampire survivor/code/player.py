@@ -42,7 +42,7 @@ class Player(pygame.sprite.Sprite):
             self.animation_speed = 0
             self.frame_index = 0
         else:
-            self.animation_speed =5 
+            self.animation_speed =2 
         if self.direction.x != 0:
             self.state = "right" if self.direction.x > 0 else  "left"
         if self.direction.y != 0:
